@@ -44,6 +44,12 @@ public class OracleMcpServer {
         return oracleService.describeTable(tableName, schema);
     }
 
+    @Tool(description = "Lista las constraints de una tabla (PK, FK, UNIQUE, CHECK). Para FKs muestra tabla referenciada y mapeo de columnas")
+    public ToolResponse describeConstraints(
+            @ToolArg(description = "Nombre de la tabla") String tableName,
+            @ToolArg(description = "Esquema (opcional)") Optional<String> schema) {
+        return oracleService.describeConstraints(tableName, schema);
+    }
     @Tool(description = "Obtiene el DDL (Data Definition Language) de un objeto (TABLE, VIEW, TRIGGER, etc.)")
     public ToolResponse ddl(
             @ToolArg(description = "Tipo de objeto (TABLE, VIEW, TRIGGER, etc.)") String objectType,

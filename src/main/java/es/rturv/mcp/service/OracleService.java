@@ -65,6 +65,31 @@ public class OracleService {
         return executeAndFormat(sql);
     }
 
+    public ToolResponse describeConstraints(String tableName, Optional<String> schema) {
+        String ownerCond = schema.isPresent() ? "AND ac.owner = '" + schema.get().toUpperCase() + "' " : "AND ac.owner = USER ";
+
+        String sql = "SELECT ac.constraint_name AS constraint_name, " +
+                     "ac.constraint_type AS constraint_type, " +
+                     "LISTAGG(acc.column_name, ',') WITHIN GROUP (ORDER BY acc.position) AS columns, " +
+                     "rc.owner AS r_owner, rc.table_name AS r_table_name, " +
+                     "LISTAGG(acc.column_name || '->' || racc.column_name, ',') WITHIN GROUP (ORDER BY acc.position) AS column_mapping " +
+                     "FROM ALL_CONSTRAINTS ac " +
+                     "JOIN ALL_CONS_COLUMNS acc ON ac.owner = acc.owner AND ac.constraint_name = acc.constraint_name " +
+                     "LEFT JOIN ALL_CONSTRAINTS rc ON ac.r_owner = rc.owner AND ac.r_constraint_name = rc.constraint_name " +
+                     "LEFT JOIN ALL_CONS_COLUMNS racc ON rc.owner = racc.owner AND rc.constraint_name = racc.constraint_name AND acc.position = racc.position " +
+                     "WHERE ac.table_name = '" + tableName.toUpperCase() + "' " + ownerCond +
+                     "GROUP BY ac.constraint_name, ac.constraint_type, rc.owner, rc.table_name " +
+                     "ORDER BY ac.constraint_name";
+
+        try {
+            OracleRepository.RawQueryResult result = repository.executeQuery(sql, null);
+            return formatAsMarkdownTable(result);
+        } catch (SQLException e) {
+            LOG.error("Error obteniendo constraints para tabla " + tableName, e);
+            return ToolResponse.error("Error SQL: " + e.getMessage());
+        }
+    }
+
     public ToolResponse getDdl(String objectType, String objectName, Optional<String> schema) {
         String owner = schema.map(String::toUpperCase).orElse(null);
         try {
