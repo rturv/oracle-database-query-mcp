@@ -35,9 +35,11 @@ Para usar el código que tienes actualmente en local:
            "C:/Proyectos/2025/IA/mio/oracle-database-query-mcp/target/quarkus-app/quarkus-run.jar"
          ],
          "env": {
-           "JDBC_URL": "jdbc:oracle:thin:@localhost:1521/ORCLPDB1",
+           "JDBC_URL": "<cadena jdbc del recurso oracle>", // ejemplo: "jdbc:oracle:thin:@localhost:1521/ORCLPDB1",
            "JDBC_USER": "mi_usuario",
-           "JDBC_PASSWORD": "mi_password"
+           "JDBC_PASSWORD": "mi_password",
+           "PATH": "<path a aplicar para ejecutar comando java>", //opcional pero conveniente
+		       "JAVA_HOME": "<Ruta donde esta instalado el JRE/JDK que quieres aplicar>" //opcional pero conveniente
          }
        }
      }

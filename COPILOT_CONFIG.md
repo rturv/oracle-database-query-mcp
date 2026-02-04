@@ -26,6 +26,7 @@ Esta es la mejor opción para probar cambios locales antes de publicar la imagen
    - `JDBC_URL`: URL de conexión completa (ej: `jdbc:oracle:thin:@localhost:1521/ORCLPDB1`)
    - `JDBC_USER`: Usuario
    - `JDBC_PASSWORD`: Contraseña
+   - `ORACLE_CHARSET`: Juego de caracteres para la conexión y salida de datos (por defecto: `UTF-8`)
 
 3. **Añadir a la configuración de Copilot:**
    En VS Code, abre el Command Palette (`Ctrl+Shift+P`) y busca "Copilot: Configure MCP Servers".
@@ -41,9 +42,12 @@ Esta es la mejor opción para probar cambios locales antes de publicar la imagen
            "C:/Proyectos/2025/IA/mio/oracle-database-query-mcp/target/quarkus-app/quarkus-run.jar"
          ],
          "env": {
-           "JDBC_URL": "jdbc:oracle:thin:@tu_host:1521/XE",
+           "JDBC_URL": "<cadena jdbc del recurso oracle>", // ejemplo: "jdbc:oracle:thin:@localhost:1521/ORCLPDB1",
            "JDBC_USER": "mi_usuario",
-           "JDBC_PASSWORD": "mi_password"
+           "JDBC_PASSWORD": "mi_password",
+           "ORACLE_CHARSET": "UTF-8", // Opcional: juego de caracteres, por defecto UTF-8
+           "PATH": "<path a aplicar para ejecutar comando java>", //opcional pero conveniente
+		       "JAVA_HOME": "<Ruta donde esta instalado el JRE/JDK que quieres aplicar>" //opcional pero conveniente
          }
        }
      }
@@ -67,6 +71,7 @@ Cuando el contenedor esté disponible en Docker Hub (`rturv/oracle-database-quer
         "-e", "JDBC_URL=oracle:thin:@host.docker.internal:1521/XE",
         "-e", "JDBC_USER=mi_usuario",
         "-e", "JDBC_PASSWORD=mi_password",
+        "-e", "ORACLE_CHARSET=UTF-8",
         "rturv/oracle-database-query-mcp:latest"
       ]
     }
