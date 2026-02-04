@@ -66,6 +66,7 @@ El servidor se configura a través de variables de entorno (mapeadas en `src/mai
 - `JDBC_URL`: URL de conexión completa (ej: `jdbc:oracle:thin:@localhost:1521/ORCLPDB1`)
 - `JDBC_USER`: Usuario de la base de datos.
 - `JDBC_PASSWORD`: Contraseña del usuario.
+- `ORACLE_CHARSET`: Juego de caracteres para la conexión y salida de datos (por defecto: `UTF-8`)
 
 ### Herramientas Incluidas (Tools)
 
