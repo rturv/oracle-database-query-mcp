@@ -107,4 +107,47 @@ class OracleMcpServerTest {
         // Verificamos que se llamó a setNull para el tercer parámetro (owner)
         Mockito.verify(pstmt).setNull(Mockito.eq(3), Mockito.eq(Types.VARCHAR));
     }
+
+    @Test
+    void testDescribeConstraintsSuccess() throws SQLException {
+        Connection conn = Mockito.mock(Connection.class);
+        Statement stmt = Mockito.mock(Statement.class);
+        ResultSet rs = Mockito.mock(ResultSet.class);
+        ResultSetMetaData meta = Mockito.mock(ResultSetMetaData.class);
+
+        Mockito.when(dataSource.getConnection()).thenReturn(conn);
+        Mockito.when(conn.createStatement()).thenReturn(stmt);
+        Mockito.when(stmt.executeQuery(anyString())).thenReturn(rs);
+        Mockito.when(rs.getMetaData()).thenReturn(meta);
+
+        Mockito.when(meta.getColumnCount()).thenReturn(6);
+        Mockito.when(meta.getColumnName(1)).thenReturn("CONSTRAINT_NAME");
+        Mockito.when(meta.getColumnName(2)).thenReturn("CONSTRAINT_TYPE");
+        Mockito.when(meta.getColumnName(3)).thenReturn("COLUMNS");
+        Mockito.when(meta.getColumnName(4)).thenReturn("R_OWNER");
+        Mockito.when(meta.getColumnName(5)).thenReturn("R_TABLE_NAME");
+        Mockito.when(meta.getColumnName(6)).thenReturn("COLUMN_MAPPING");
+
+        // Two rows: one PK and one FK
+        Mockito.when(rs.next()).thenReturn(true, true, false);
+
+        // For ordered sequential getObject calls, configure consecutive returns per column index
+        Mockito.when(rs.getObject(1)).thenReturn("PK_MYTABLE", "FK_MYTABLE_CUST");
+        Mockito.when(rs.getObject(2)).thenReturn("P", "R");
+        Mockito.when(rs.getObject(3)).thenReturn("ID", "CUSTOMER_ID");
+        Mockito.when(rs.getObject(4)).thenReturn(null, "SCHEMA2");
+        Mockito.when(rs.getObject(5)).thenReturn(null, "CUSTOMERS");
+        Mockito.when(rs.getObject(6)).thenReturn(null, "CUSTOMER_ID->ID");
+
+        ToolResponse response = mcpServer.describeConstraints("MYTABLE", Optional.empty());
+
+        assertNotNull(response);
+        assertFalse(response.isError());
+        TextContent content = (TextContent) response.content().get(0);
+        String text = content.text();
+
+        assertTrue(text.contains("PK_MYTABLE") || text.contains("FK_MYTABLE_CUST"));
+        assertTrue(text.contains("CUSTOMER_ID->ID") || text.contains("ID"));
+    }
+
 }
