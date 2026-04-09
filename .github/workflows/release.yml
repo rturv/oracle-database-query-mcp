@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: JVM build (fast, Java 21, any platform)
+  # ──────────────────────────────────────────────
+  build-jvm:
+    name: Build JVM artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build JVM package
+        run: ./mvnw package -DskipTests -B
+
+      - name: Create JVM ZIP
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          zip -r oracle-database-query-mcp-${VERSION}-jvm.zip target/quarkus-app/
+        shell: bash
+
+      - name: Upload JVM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jvm-zip
+          path: oracle-database-query-mcp-*-jvm.zip
+          retention-days: 1
+
+  # ──────────────────────────────────────────────
+  # Job 2: Native Linux build (no JRE needed)
+  # ──────────────────────────────────────────────
+  build-native:
+    name: Build native Linux artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build native executable (container build)
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          ./mvnw clean package -DskipTests -B \
+            -Dnative \
+            -Dquarkus.native.container-build=true \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.image=rturv/oracle-database-query-mcp:${VERSION}-native \
+            -Dquarkus.docker.dockerfile-native-path=src/main/docker/Dockerfile.native
+        shell: bash
+
+      - name: Rename native binary
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          cp target/*-runner oracle-database-query-mcp-${VERSION}-linux-x86_64
+        shell: bash
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-linux
+          path: oracle-database-query-mcp-*-linux-x86_64
+          retention-days: 1
+
+  # ──────────────────────────────────────────────
+  # Job 3: Create GitHub Release and attach both
+  # ──────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-jvm, build-native]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download JVM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jvm-zip
+          path: dist/
+
+      - name: Download native artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: native-linux
+          path: dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: dist/*
+          body: |
+            ## Artefactos disponibles
+
+            | Archivo | Descripción | Requisito |
+            |---------|-------------|-----------|
+            | `*-jvm.zip` | Distribución JVM completa | Java 21 instalado |
+            | `*-linux-x86_64` | Binario nativo Linux | Ninguno (standalone) |
+
+            ### Uso del ZIP JVM
+            ```bash
+            unzip oracle-database-query-mcp-*-jvm.zip
+            java -jar target/quarkus-app/quarkus-run.jar
+            ```
+
+            ### Variables de entorno requeridas
+            ```
+            JDBC_URL=jdbc:oracle:thin:@host:1521/service
+            JDBC_USER=usuario
+            JDBC_PASSWORD=contraseña
+            ```
