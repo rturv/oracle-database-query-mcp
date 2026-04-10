@@ -1,115 +1,175 @@
-# oracle-database-query-mcp
+﻿# oracle-database-query-mcp
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+Servidor MCP (**Model Context Protocol**) de solo lectura para bases de datos **Oracle**, construido con [Quarkus](https://quarkus.io/) y ejecutado en modo **stdio**. Permite a clientes MCP como GitHub Copilot o Claude Desktop consultar una base de datos Oracle mediante lenguaje natural.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## Índice
 
-## Running the application in dev mode
+- [Herramientas disponibles](#herramientas-disponibles-tools)
+- [Variables de entorno](#variables-de-entorno)
+- [Instalación desde Release](#instalación-desde-release-recomendado)
+- [Compilar desde fuente](#compilar-desde-fuente)
+- [Ejecutar el servidor](#ejecutar-el-servidor)
+- [Configurar en Copilot / Claude Desktop](#configurar-en-copilot--claude-desktop)
+- [Desarrollo local](#desarrollo-local)
 
-You can run your application in dev mode that enables live coding using:
+---
 
-```shell script
-./mvnw quarkus:dev
-```
+## Herramientas disponibles (Tools)
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+| Tool | Descripción |
+|---|---|
+| `ping` | Prueba la conexión JDBC |
+| `query` | Ejecuta un `SELECT` o `WITH`. Acepta esquema opcional para la sesión |
+| `describeSchema` | Lista objetos (tablas, vistas, funciones…) de un esquema |
+| `describeTable` | Describe columnas, tipos y propiedades de una tabla |
+| `ddl` | Obtiene el DDL de un objeto vía `DBMS_METADATA.GET_DDL` |
+| `listTables` | Lista rápida de tablas por propietario |
+| `sessionInfo` | Muestra usuario, esquema y base de datos de la sesión activa |
 
-## Packaging and running the application
+---
 
-The application can be packaged using:
+## Variables de entorno
 
-```shell script
-./mvnw package
-```
+| Variable | Descripción | Ejemplo |
+|---|---|---|
+| `JDBC_URL` | URL de conexión Oracle | `jdbc:oracle:thin:@localhost:1521/ORCLPDB1` |
+| `JDBC_USER` | Usuario de la base de datos | `mcp_user` |
+| `JDBC_PASSWORD` | Contraseña | `secret` |
+| `ORACLE_CHARSET` | Juego de caracteres (por defecto `UTF-8`) | `UTF-8` |
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+---
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+## Instalación desde Release (recomendado)
 
-If you want to build an _über-jar_, execute the following command:
+Descarga los artefactos precompilados desde la [página de Releases](https://github.com/rturv/oracle-database-query-mcp/releases).
 
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
+### Opción A — ZIP JVM (Windows / Mac / Linux con Java 21)
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+```bash
+# Descomprimir
+unzip oracle-database-query-mcp-1.0.1-jvm.zip
 
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-## Oracle Database Query MCP
-
-Este servidor MCP permite interactuar con una base de datos Oracle en modo **solo lectura**. 
-
-### Arquitectura
-El proyecto sigue un patrón de **arquitectura hexagonal (lite)** dividido en capas:
-- **API (Fachada MCP):** Definición de herramientas y entrada del protocolo.
-- **Service (Negocio):** Lógica de validación de solo lectura y orquestación.
-- **Infrastructure (Persistencia):** Acceso a datos mediante **JDBC (Agroal)**.
-
-### Configuración
-
-El servidor se configura a través de variables de entorno (mapeadas en `src/main/resources/application.properties`):
-
-- `JDBC_URL`: URL de conexión completa (ej: `jdbc:oracle:thin:@localhost:1521/ORCLPDB1`)
-- `JDBC_USER`: Usuario de la base de datos.
-- `JDBC_PASSWORD`: Contraseña del usuario.
-- `ORACLE_CHARSET`: Juego de caracteres para la conexión y salida de datos (por defecto: `UTF-8`)
-
-### Herramientas Incluidas (Tools)
-
-1.  `ping`: Prueba la conexión JDBC básica.
-2.  `query`: Ejecuta una sentencia SQL `SELECT` o `WITH`. Permite indicar esquema opcional para la sesión.
-3.  `describeSchema`: Lista objetos (tablas, vistas, funciones, etc.) de un esquema.
-4.  `describeTable`: Describe columnas, tipos y propiedades de una tabla específica.
-5.  `ddl`: Obtiene el DDL de un objeto usando `DBMS_METADATA.GET_DDL`.
-6.  `listTables`: Lista rápida de tablas por propietario.
-7.  `sessionInfo`: Muestra el usuario, esquema y base de datos de la sesión actual.
-
-### Modos de Ejecución
-
-#### 1. Local (stdio) con Inspector
-Para probar el servidor localmente con la interfaz de Anthropic:
-```powershell
-$env:JDBC_URL="jdbc:oracle:thin:@localhost:1521/XE"; $env:JDBC_USER="user"; $env:JDBC_PASSWORD="pass"; npx @modelcontextprotocol/inspector java -jar target/quarkus-app/quarkus-run.jar
-```
-
-#### 2. Local (stdio) - JAR
-Ideal para usar con Claude Desktop o VS Code Copilot:
-```shell script
+# Ejecutar
+JDBC_URL=jdbc:oracle:thin:@host:1521/service \
+JDBC_USER=usuario \
+JDBC_PASSWORD=contraseña \
 java -jar target/quarkus-app/quarkus-run.jar
 ```
 
-#### 2. Docker JVM
-```shell script
-docker build -f src/main/docker/Dockerfile.jvm -t oracle-mcp-jvm .
-docker run -i --rm -e ORACLE_HOST=... -e ORACLE_USER=... oracle-mcp-jvm
+> Requiere Java 21 instalado.
+
+### Opción B — Binario nativo Linux (sin Java)
+
+```bash
+# Dar permisos de ejecución
+chmod +x oracle-database-query-mcp-1.0.1-linux-x86_64
+
+# Ejecutar directamente
+JDBC_URL=jdbc:oracle:thin:@host:1521/service \
+JDBC_USER=usuario \
+JDBC_PASSWORD=contraseña \
+./oracle-database-query-mcp-1.0.1-linux-x86_64
 ```
 
-#### 3. Native
-```shell script
-./mvnw package -Dnative
-docker build -f src/main/docker/Dockerfile.native -t oracle-mcp-native .
-docker run -i --rm -e ORACLE_HOST=... -e ORACLE_USER=... oracle-mcp-native
+> No requiere JVM. Arranca en milisegundos.
+
+### Opción C — Imagen Docker (nativa)
+
+```bash
+docker pull rturv/oracle-database-query-mcp:1.0.1-native
+
+docker run -i --rm \
+  -e JDBC_URL=jdbc:oracle:thin:@host:1521/ORCLPDB1 \
+  -e JDBC_USER=usuario \
+  -e JDBC_PASSWORD=contraseña \
+  rturv/oracle-database-query-mcp:1.0.1-native
 ```
 
-You can then execute your native executable with: `./target/oracle-database-query-mcp-1.0.0-SNAPSHOT-runner`
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
+---
 
-## Related Guides
+## Compilar desde fuente
 
-- Reactive Oracle client ([guide](https://quarkus.io/guides/reactive-sql-clients)): Connect to the Oracle database using the reactive pattern
-- MCP Server - HTTP/SSE ([guide](https://docs.quarkiverse.io/quarkus-mcp-server/dev/index.html)): This extension enables developers to implement the MCP server features easily.
+Requisitos: Java 21, Maven (o usa el wrapper `./mvnw`).
+
+### Build JVM (estándar)
+
+```bash
+./mvnw package -DskipTests
+# Artefacto: target/quarkus-app/quarkus-run.jar
+```
+
+### Build nativo con GraalVM local
+
+```bash
+./mvnw package -Dnative -DskipTests
+# Artefacto: target/*-runner
+```
+
+### Build nativo con Docker (sin GraalVM instalado)
+
+```bash
+./mvnw clean package -Dnative -DskipTests \
+  -Dquarkus.native.container-build=true \
+  -Dquarkus.container-image.build=true \
+  -Dquarkus.container-image.image=rturv/oracle-database-query-mcp:x.y.z-native \
+  -Dquarkus.docker.dockerfile-native-path=src/main/docker/Dockerfile.native
+# Artefacto: target/*-runner  +  imagen Docker local
+```
+
+> Solo requiere Docker instalado, no GraalVM.
+
+---
+
+## Ejecutar el servidor
+
+El servidor usa **stdio** como transporte MCP: los clientes lo lanzan como proceso hijo y se comunican por stdin/stdout.
+
+```bash
+# JAR JVM
+java -jar target/quarkus-app/quarkus-run.jar
+
+# Binario nativo
+./target/oracle-database-query-mcp-x.y.z-runner
+```
+
+### Probar con el Inspector MCP (interfaz web)
+
+```bash
+# PowerShell
+$env:JDBC_URL="jdbc:oracle:thin:@localhost:1521/XE"
+$env:JDBC_USER="user"
+$env:JDBC_PASSWORD="pass"
+npx @modelcontextprotocol/inspector java -jar target/quarkus-app/quarkus-run.jar
+```
+
+---
+
+## Configurar en Copilot / Claude Desktop
+
+Consulta [COPILOT_CONFIG.md](COPILOT_CONFIG.md) para instrucciones detalladas de configuración en VS Code (GitHub Copilot) y Claude Desktop.
+
+---
+
+## Desarrollo local
+
+```bash
+# Modo live-coding (Quarkus Dev)
+./mvnw quarkus:dev
+
+# Tests
+./mvnw test
+
+# Build sin tests
+./mvnw package -DskipTests
+```
+
+> La Dev UI está disponible en modo dev en `http://localhost:8080/q/dev/`.
+
+### Arquitectura
+
+El proyecto sigue un patrón de arquitectura hexagonal (lite):
+
+- **API (Fachada MCP):** `OracleMcpServer` — definición de tools y entrada del protocolo.
+- **Service (Negocio):** `OracleService` — validación de solo lectura y orquestación.
+- **Infrastructure (Persistencia):** `OracleRepository` — acceso JDBC via Agroal.

@@ -1,63 +1,180 @@
-# Configuración de Oracle Database Query MCP para GitHub Copilot (VS Code)
+﻿# Configuración de Oracle Database Query MCP para GitHub Copilot y Claude Desktop
 
-Este documento explica cómo configurar este servidor MCP en VS Code para usarlo con GitHub Copilot.
+Este documento explica cómo conectar este servidor MCP a tu cliente IA preferido.
 
-## Requisitos Previos
+## Prerrequisitos
 
-1. Tener instalado [VS Code](https://code.visualstudio.com/).
-2. Tener la extensión [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) activa.
-3. (Opcional) Tener Docker instalado si prefieres usar la imagen del contenedor.
+- Acceso a una base de datos Oracle con usuario de solo lectura.
+- Una de las siguientes opciones de instalación del servidor:
+  - **ZIP JVM**: Java 21 instalado + ZIP descargado de la [página de Releases](https://github.com/rturv/oracle-database-query-mcp/releases).
+  - **Binario nativo Linux**: solo el binario descargado de Releases (sin Java).
+  - **Docker**: Docker instalado.
+  - **Compilado local**: Java 21 + Maven (ver [README.md](README.md)).
 
-## Configuración en VS Code
+---
 
-GitHub Copilot admite servidores MCP a través de su configuración de extensiones o mediante el archivo de configuración de Claude Desktop (que Copilot puede importar).
+## Opciones de instalación del servidor
 
-### Opción 1: Modo Local (stdio) - Para Desarrollo/Pruebas
+### Opción 1 — Binario nativo Linux (más sencilla en Linux)
 
-Esta es la mejor opción para probar cambios locales antes de publicar la imagen.
+Descarga `oracle-database-query-mcp-X.Y.Z-linux-x86_64` de la [página de Releases](https://github.com/rturv/oracle-database-query-mcp/releases) y dale permisos de ejecución:
 
-1. **Compilar el proyecto:**
-   ```bash
-   ./mvnw package
-   ```
+```bash
+chmod +x oracle-database-query-mcp-1.0.1-linux-x86_64
+```
 
-2. **Configurar las variables de entorno:**
-   Asegúrate de tener acceso a tu base de datos Oracle. Las variables necesarias son:
-   - `JDBC_URL`: URL de conexión completa (ej: `jdbc:oracle:thin:@localhost:1521/ORCLPDB1`)
-   - `JDBC_USER`: Usuario
-   - `JDBC_PASSWORD`: Contraseña
-   - `ORACLE_CHARSET`: Juego de caracteres para la conexión y salida de datos (por defecto: `UTF-8`)
+### Opción 2 — ZIP JVM (Windows / Mac / Linux)
 
-3. **Añadir a la configuración de Copilot:**
-   En VS Code, abre el Command Palette (`Ctrl+Shift+P`) y busca "Copilot: Configure MCP Servers".
-   O añade manualmente al archivo de configuración de MCP:
+Descarga y descomprime `oracle-database-query-mcp-X.Y.Z-jvm.zip` de Releases. El JAR estará en `target/quarkus-app/quarkus-run.jar`.
 
-   ```json
-   {
-     "mcpServers": {
-       "oracle-mcp-local": {
-         "command": "java",
-         "args": [
-           "-jar",
-           "C:/Proyectos/2025/IA/mio/oracle-database-query-mcp/target/quarkus-app/quarkus-run.jar"
-         ],
-         "env": {
-           "JDBC_URL": "<cadena jdbc del recurso oracle>", // ejemplo: "jdbc:oracle:thin:@localhost:1521/ORCLPDB1",
-           "JDBC_USER": "mi_usuario",
-           "JDBC_PASSWORD": "mi_password",
-           "ORACLE_CHARSET": "UTF-8", // Opcional: juego de caracteres, por defecto UTF-8
-           "PATH": "<path a aplicar para ejecutar comando java>", //opcional pero conveniente
-		       "JAVA_HOME": "<Ruta donde esta instalado el JRE/JDK que quieres aplicar>" //opcional pero conveniente
-         }
-       }
-     }
-   }
-   ```
-   *Nota: Se recomienda usar la ruta absoluta tanto para el ejecutable de `java` como para el `JAVA_HOME` para evitar conflictos de versiones.*
+### Opción 3 — Docker (cualquier plataforma)
 
-### Opción 2: Modo Docker (Producción/Publicado)
+```bash
+docker pull rturv/oracle-database-query-mcp:1.0.1-native
+```
 
-Cuando el contenedor esté disponible en Docker Hub (`rturv/oracle-database-query-mcp`):
+### Opción 4 — Compilado local
+
+```bash
+git clone https://github.com/rturv/oracle-database-query-mcp.git
+cd oracle-database-query-mcp
+./mvnw package -DskipTests
+# JAR disponible en target/quarkus-app/quarkus-run.jar
+```
+
+---
+
+## Variables de entorno necesarias
+
+| Variable | Descripción | Ejemplo |
+|---|---|---|
+| `JDBC_URL` | URL de conexión Oracle | `jdbc:oracle:thin:@localhost:1521/ORCLPDB1` |
+| `JDBC_USER` | Usuario de la BD | `mcp_user` |
+| `JDBC_PASSWORD` | Contraseña | `secret` |
+| `ORACLE_CHARSET` | Juego de caracteres (opcional, defecto `UTF-8`) | `UTF-8` |
+
+---
+
+## Configuración en VS Code (GitHub Copilot)
+
+Abre la paleta de comandos (`Ctrl+Shift+P`) → **"MCP: Add Server"**, o edita manualmente el archivo de configuración MCP de VS Code (normalmente en `.vscode/mcp.json` o en la configuración de usuario).
+
+### Con ZIP JVM (Windows)
+
+```json
+{
+  "servers": {
+    "oracle-mcp": {
+      "type": "stdio",
+      "command": "java",
+      "args": [
+        "-jar",
+        "C:/ruta/a/target/quarkus-app/quarkus-run.jar"
+      ],
+      "env": {
+        "JDBC_URL": "jdbc:oracle:thin:@localhost:1521/ORCLPDB1",
+        "JDBC_USER": "mcp_user",
+        "JDBC_PASSWORD": "mi_password",
+        "ORACLE_CHARSET": "UTF-8",
+        "JAVA_HOME": "C:/programas/jdk-21.0.10"
+      }
+    }
+  }
+}
+```
+
+> Usa `JAVA_HOME` para fijar la versión de Java si tienes varias instaladas.
+
+### Con binario nativo (Linux / Mac)
+
+```json
+{
+  "servers": {
+    "oracle-mcp": {
+      "type": "stdio",
+      "command": "/ruta/a/oracle-database-query-mcp-1.0.1-linux-x86_64",
+      "args": [],
+      "env": {
+        "JDBC_URL": "jdbc:oracle:thin:@localhost:1521/ORCLPDB1",
+        "JDBC_USER": "mcp_user",
+        "JDBC_PASSWORD": "mi_password"
+      }
+    }
+  }
+}
+```
+
+### Con Docker
+
+```json
+{
+  "servers": {
+    "oracle-mcp": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "JDBC_URL=jdbc:oracle:thin:@host.docker.internal:1521/ORCLPDB1",
+        "-e", "JDBC_USER=mcp_user",
+        "-e", "JDBC_PASSWORD=mi_password",
+        "-e", "ORACLE_CHARSET=UTF-8",
+        "rturv/oracle-database-query-mcp:1.0.1-native"
+      ]
+    }
+  }
+}
+```
+
+---
+
+## Configuración en Claude Desktop
+
+Edita el archivo de configuración de Claude Desktop:
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+### Con ZIP JVM (Windows)
+
+```json
+{
+  "mcpServers": {
+    "oracle-mcp": {
+      "command": "java",
+      "args": [
+        "-jar",
+        "C:/ruta/a/target/quarkus-app/quarkus-run.jar"
+      ],
+      "env": {
+        "JDBC_URL": "jdbc:oracle:thin:@localhost:1521/ORCLPDB1",
+        "JDBC_USER": "mcp_user",
+        "JDBC_PASSWORD": "mi_password",
+        "ORACLE_CHARSET": "UTF-8",
+        "JAVA_HOME": "C:/programas/jdk-21.0.10"
+      }
+    }
+  }
+}
+```
+
+### Con binario nativo (Linux / Mac)
+
+```json
+{
+  "mcpServers": {
+    "oracle-mcp": {
+      "command": "/ruta/a/oracle-database-query-mcp-1.0.1-linux-x86_64",
+      "args": [],
+      "env": {
+        "JDBC_URL": "jdbc:oracle:thin:@localhost:1521/ORCLPDB1",
+        "JDBC_USER": "mcp_user",
+        "JDBC_PASSWORD": "mi_password"
+      }
+    }
+  }
+}
+```
+
+### Con Docker
 
 ```json
 {
@@ -65,23 +182,26 @@ Cuando el contenedor esté disponible en Docker Hub (`rturv/oracle-database-quer
     "oracle-mcp": {
       "command": "docker",
       "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-e", "JDBC_URL=oracle:thin:@host.docker.internal:1521/XE",
-        "-e", "JDBC_USER=mi_usuario",
+        "run", "-i", "--rm",
+        "-e", "JDBC_URL=jdbc:oracle:thin:@host.docker.internal:1521/ORCLPDB1",
+        "-e", "JDBC_USER=mcp_user",
         "-e", "JDBC_PASSWORD=mi_password",
         "-e", "ORACLE_CHARSET=UTF-8",
-        "rturv/oracle-database-query-mcp:latest"
+        "rturv/oracle-database-query-mcp:1.0.1-native"
       ]
     }
   }
 }
 ```
 
-## Uso en el Chat
+---
 
-Una vez configurado, puedes preguntar a Copilot cosas como:
-- "@mcp ¿qué tablas hay en el esquema HR?"
-- "@mcp ejecuta una consulta para ver los últimos 10 pedidos"
-- "@mcp describe la estructura de la tabla EMPLOYEES"
+## Uso en el chat
+
+Una vez configurado, puedes preguntar cosas como:
+
+- *"¿Qué tablas hay en el esquema HR?"*
+- *"Muestra los últimos 10 registros de la tabla EMPLOYEES"*
+- *"Describe la estructura de la tabla ORDERS"*
+- *"¿Cuál es el DDL de la tabla CUSTOMERS?"*
+- *"¿Estoy conectado a la base de datos correcta?"* (usa `sessionInfo`)
